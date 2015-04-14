@@ -44,11 +44,11 @@ const (
 	CYAN_BLUE  = "36"
 	WHITE      = "37"
 
-	DEBUG = "[DEBUG]"
-	INFO  = "[INFO]"
-	WARN  = "[WARN]"
-	ERROR = "[ERROR]"
-	FATAL = "[FATAL]"
+	DEBUG = "[DEBUG	]"
+	INFO  = "[INFO	]"
+	WARN  = "[WARN	]"
+	ERROR = "[ERROR	]"
+	FATAL = "[FATAL	]"
 
 	LOG_START = "\033[1;0;"
 	LOG_END   = "\033[0m"
@@ -107,18 +107,26 @@ type EColor struct {
 }
 
 func (this *EWrite) Write(color string, log_info string, log ...interface{}) {
-	fmt.Print(LOG_START + color + "m" + log_info + " - " + time.Now().String() + " : ")
-	fmt.Print("\n	")
-	for _, v := range log {
-		fmt.Print(v.([]interface{})[0])
-	}
-	fmt.Print("\n")
+	start := LOG_START + color + "m" + log_info + " - " + time.Now().Format("2006-01-02 15:04:05")
 	_, file, line, ok := runtime.Caller(4)
+	var f string
 	if ok == true {
-		files := strings.Split(file, "/src")
-		fmt.Printf("	-->> file: %s	line: %v", files[1], line)
+		files := strings.Split(file, "/src/")
+		if len(files) >= 2 {
+			f = files[1]
+		} else {
+			f = file
+		}
+
+		f = fmt.Sprintf(" >> file: %s	line: %v", f, line)
 	}
-	fmt.Print(LOG_END + "\n")
+
+	var data string
+	for _, v := range log {
+		data = fmt.Sprintf("%v", v.([]interface{})[0])
+	}
+
+	fmt.Print(start + f + "\n	" + data + LOG_END + "\n")
 }
 
 type ELog struct {
