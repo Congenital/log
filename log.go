@@ -123,7 +123,7 @@ func (this *EWrite) Write(color string, log_info string, log ...interface{}) {
 
 	var data string
 	for _, v := range log {
-		data = fmt.Sprintf("%v", v.([]interface{})[0])
+		data += fmt.Sprintf("%v", v.([]interface{})[0])
 	}
 
 	fmt.Print(start + f + "\n	" + data + LOG_END + "\n")
