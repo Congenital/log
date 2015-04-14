@@ -30,6 +30,10 @@ const (
 )
 
 const (
+	FILE_LEVEL = WARN_N
+)
+
+const (
 	OFF = iota
 	ON
 )
@@ -106,19 +110,21 @@ type EColor struct {
 	Color string
 }
 
-func (this *EWrite) Write(color string, log_info string, log ...interface{}) {
+func (this *EWrite) Write(level int, color string, log_info string, log ...interface{}) {
 	start := LOG_START + color + "m" + log_info + " - " + time.Now().Format("2006-01-02 15:04:05")
-	_, file, line, ok := runtime.Caller(4)
 	var f string
-	if ok == true {
-		files := strings.Split(file, "/src/")
-		if len(files) >= 2 {
-			f = files[1]
-		} else {
-			f = file
-		}
+	if level <= FILE_LEVEL {
+		_, file, line, ok := runtime.Caller(4)
+		if ok == true {
+			files := strings.Split(file, "/src/")
+			if len(files) >= 2 {
+				f = files[1]
+			} else {
+				f = file
+			}
 
-		f = fmt.Sprintf(" >> file: %s	line: %v", f, line)
+			f = fmt.Sprintf(" >> file: %s	line: %v", f, line)
+		}
 	}
 
 	var data string
@@ -162,7 +168,7 @@ func (this *ELog) Log(log ...interface{}) {
 		return
 	}
 
-	this.Write(this.Color, this.log, log)
+	this.Write(this.level, this.Color, this.log, log)
 }
 
 func (this *ELog) On() {
