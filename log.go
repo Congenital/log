@@ -14,6 +14,9 @@ package log
 
 import (
 	"fmt"
+	"runtime"
+	"strings"
+	"time"
 )
 
 const (
@@ -104,9 +107,16 @@ type EColor struct {
 }
 
 func (this *EWrite) Write(color string, log_info string, log ...interface{}) {
-	fmt.Print(LOG_START + color + "m" + log_info + " : ")
+	fmt.Print(LOG_START + color + "m" + log_info + " - " + time.Now().String() + " : ")
+	fmt.Print("\n	")
 	for _, v := range log {
 		fmt.Print(v.([]interface{})[0])
+	}
+	fmt.Print("\n")
+	_, file, line, ok := runtime.Caller(4)
+	if ok == true {
+		files := strings.Split(file, "/src")
+		fmt.Printf("	-->> file: %s	line: %v", files[1], line)
 	}
 	fmt.Print(LOG_END + "\n")
 }
