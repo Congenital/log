@@ -1,10 +1,13 @@
 package log
 
 import (
+	"sync"
 	"testing"
 )
 
 func TestLog(t *testing.T) {
+	FatalOff()
+
 	Debug("Debugs : ", len("fdsafs"), []string{"Debug", "Debug"}, 10, 20)
 	Info("Info")
 	Warn("Warn")
@@ -28,6 +31,7 @@ func TestLog(t *testing.T) {
 	WarnOn()
 	ErrorOn()
 	FatalOn()
+	FatalOff()
 
 	Debug([]string{"Debug", "Debug"})
 	Info("Info")
@@ -36,6 +40,7 @@ func TestLog(t *testing.T) {
 	Fatal("Fatal")
 
 	Off()
+
 	Debug([]string{"Debug", "Debug"})
 	Info("Info")
 	Warn("Warn")
@@ -43,6 +48,8 @@ func TestLog(t *testing.T) {
 	Fatal("Fatal")
 
 	On()
+	FatalOff()
+
 	Debug([]string{"Debug", "Debug"})
 	Info("Info")
 	Warn("Warn")
@@ -60,4 +67,27 @@ func TestLog(t *testing.T) {
 	Warn("Warn")
 	Error("Error")
 	Fatal("Fatal")
+
+	SetLevel(100)
+
+	var N int = 100000
+
+	waitgroup := sync.WaitGroup{}
+	for i := 0; i < N; i++ {
+		waitgroup.Add(1)
+		go func(i int) {
+			defer func() {
+				waitgroup.Done()
+			}()
+
+			Debug("Debug")
+			Info("Info")
+			Warn("Warn")
+			Error("Error")
+
+			Info(i)
+		}(i)
+	}
+
+	waitgroup.Wait()
 }
