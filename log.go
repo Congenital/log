@@ -111,8 +111,11 @@ type EColor struct {
 }
 
 func (this *EWrite) Write(level int, color string, log_info string, log ...interface{}) {
+	var data string
+
 	start := LOG_START + color + "m" + log_info + " - " + time.Now().Format("2006-01-02 15:04:05")
 	var f string
+
 	if level <= FILE_LEVEL {
 		_, file, line, ok := runtime.Caller(4)
 		if ok == true {
@@ -127,12 +130,18 @@ func (this *EWrite) Write(level int, color string, log_info string, log ...inter
 		}
 	}
 
-	var data string
-	for _, v := range log {
-		data += fmt.Sprintf("%v", v.([]interface{})[0])
+	value := log[0]
+	for _, v := range value.([]interface{}) {
+		data += fmt.Sprintf("%v", v)
 	}
 
-	fmt.Print(start + f + "\n	" + data + LOG_END + "\n")
+	data = fmt.Sprintf("%v", start+f+"\n	"+data+LOG_END+"\n")
+
+	if level == FATAL_N {
+		panic(data)
+	}
+
+	fmt.Print(data)
 }
 
 type ELog struct {

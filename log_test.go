@@ -5,7 +5,7 @@ import (
 )
 
 func TestLog(t *testing.T) {
-	Debug([]string{"Debug", "Debug"})
+	Debug("Debugs : ", len("fdsafs"), []string{"Debug", "Debug"}, 10, 20)
 	Info("Info")
 	Warn("Warn")
 	Error("Error")
