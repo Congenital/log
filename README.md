@@ -27,6 +27,8 @@
     level should less than DEBUG(5) and large than FATAL(1).
      if less than 0, it's TRASH, can't output all log.
      it's be equal to log.Off()
+     WARN, ERROR, FATAL has file and fileine output,
+     DEBUG and INFO is no;
      */
      
      
