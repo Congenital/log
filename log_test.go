@@ -1,11 +1,14 @@
 package log
 
 import (
+	"runtime"
 	"sync"
 	"testing"
 )
 
 func TestLog(t *testing.T) {
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	FatalOff()
 
 	Debug("Debugs : ", len("fdsafs"), []string{"Debug", "Debug"}, 10, 20)
@@ -80,12 +83,19 @@ func TestLog(t *testing.T) {
 				waitgroup.Done()
 			}()
 
-			Debug("Debug")
-			Info("Info")
-			Warn("Warn")
-			Error("Error")
+			Debug("Debug", i)
+			DebugOff()
+			DebugOn()
+			Info("Info", i)
+			InfoOff()
+			InfoOn()
+			Warn("Warn", i)
+			WarnOff()
+			WarnOn()
+			Error("Error", i)
+			ErrorOff()
+			ErrorOn()
 
-			Info(i)
 		}(i)
 	}
 

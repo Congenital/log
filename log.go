@@ -14,8 +14,10 @@ package log
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -103,7 +105,7 @@ type EStatus struct {
 }
 
 type EColor struct {
-	Color string
+	color string
 }
 
 type ELog struct {
@@ -114,12 +116,16 @@ type ELog struct {
 	log string
 	IOn
 	IOff
+
+	statusLock sync.Mutex
+	writeLock  sync.Mutex
 }
 
 func NewELog(color string, log string, level int) *ELog {
+
 	return &ELog{
 		EColor: EColor{
-			Color: color,
+			color: color,
 		},
 
 		ELevel: ELevel{
@@ -135,32 +141,50 @@ func NewELog(color string, log string, level int) *ELog {
 }
 
 func (this *ELog) Log(log ...interface{}) {
-	if this.status == OFF {
+	if this.GetStatus() == OFF {
 		return
 	}
 
 	this.Write(log)
 }
 
+func (this *ELog) GetLevel() int {
+	return this.level
+}
+
+func (this *ELog) SetStatus(status int) {
+	this.statusLock.Lock()
+	defer this.statusLock.Unlock()
+
+	this.status = status
+}
+
+func (this *ELog) GetStatus() int {
+	this.statusLock.Lock()
+	defer this.statusLock.Unlock()
+
+	return this.status
+}
+
+func (this *ELog) GetColor() string {
+	return this.color
+}
+
 func (this *ELog) On() {
-	this.status = ON
+	this.SetStatus(ON)
 }
 
 func (this *ELog) Off() {
-	this.status = OFF
-}
-
-func (this *ELog) GetLevel() int {
-	return this.level
+	this.SetStatus(OFF)
 }
 
 func (this *ELog) Write(log ...interface{}) {
 	var data string
 
-	start := LOG_START + this.Color + "m" + this.log + " - " + time.Now().Format("2006-01-02 15:04:05")
+	start := LOG_START + this.GetColor() + "m" + this.log + " - " + time.Now().Format("2006-01-02 15:04:05")
 	var f string
 
-	if this.level <= FILE_LEVEL {
+	if this.GetLevel() <= FILE_LEVEL {
 		_, file, line, ok := runtime.Caller(4)
 		if ok == true {
 			files := strings.Split(file, "/src/")
@@ -181,11 +205,18 @@ func (this *ELog) Write(log ...interface{}) {
 
 	data = fmt.Sprintf("%v", start+f+"\n	"+data+LOG_END+"\n")
 
-	if this.level == FATAL_N {
+	if this.GetLevel() == FATAL_N {
 		panic(data)
 	}
 
-	fmt.Print(data)
+	this.StdoutWrite(data)
+}
+
+func (this *ELog) StdoutWrite(data string) (int, error) {
+	this.writeLock.Lock()
+	defer this.writeLock.Unlock()
+
+	return os.Stdout.WriteString(data)
 }
 
 type Log struct {
@@ -203,6 +234,8 @@ type Log struct {
 	IWarn
 	IError
 	IFatal
+
+	statusLock sync.Mutex
 }
 
 func (this *Log) SetLevel(level int) {
@@ -219,12 +252,26 @@ func (this *Log) SetLevel(level int) {
 	this.level = level
 }
 
+func (this *Log) GetStatus() int {
+	this.statusLock.Lock()
+	defer this.statusLock.Unlock()
+
+	return this.status
+}
+
+func (this *Log) SetStatus(status int) {
+	this.statusLock.Lock()
+	defer this.statusLock.Unlock()
+
+	this.status = status
+}
+
 func (this *Log) On() {
-	this.status = ON
+	this.SetStatus(ON)
 }
 
 func (this *Log) Off() {
-	this.status = OFF
+	this.SetStatus(OFF)
 }
 
 func (this *Log) Debug(log ...interface{}) {
