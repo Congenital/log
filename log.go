@@ -98,10 +98,6 @@ type IWrite interface {
 	Write(...interface{})
 }
 
-type EWrite struct {
-	IWrite
-}
-
 type EStatus struct {
 	status int
 }
@@ -110,45 +106,11 @@ type EColor struct {
 	Color string
 }
 
-func (this *EWrite) Write(level int, color string, log_info string, log ...interface{}) {
-	var data string
-
-	start := LOG_START + color + "m" + log_info + " - " + time.Now().Format("2006-01-02 15:04:05")
-	var f string
-
-	if level <= FILE_LEVEL {
-		_, file, line, ok := runtime.Caller(4)
-		if ok == true {
-			files := strings.Split(file, "/src/")
-			if len(files) >= 2 {
-				f = files[1]
-			} else {
-				f = file
-			}
-
-			f = fmt.Sprintf(" >> file: %s	line: %v", f, line)
-		}
-	}
-
-	value := log[0]
-	for _, v := range value.([]interface{}) {
-		data += fmt.Sprintf("%v", v)
-	}
-
-	data = fmt.Sprintf("%v", start+f+"\n	"+data+LOG_END+"\n")
-
-	if level == FATAL_N {
-		panic(data)
-	}
-
-	fmt.Print(data)
-}
-
 type ELog struct {
 	EColor
 	ELevel
 	EStatus
-	EWrite
+	IWrite
 	log string
 	IOn
 	IOff
@@ -177,7 +139,7 @@ func (this *ELog) Log(log ...interface{}) {
 		return
 	}
 
-	this.Write(this.level, this.Color, this.log, log)
+	this.Write(log)
 }
 
 func (this *ELog) On() {
@@ -190,6 +152,40 @@ func (this *ELog) Off() {
 
 func (this *ELog) GetLevel() int {
 	return this.level
+}
+
+func (this *ELog) Write(log ...interface{}) {
+	var data string
+
+	start := LOG_START + this.Color + "m" + this.log + " - " + time.Now().Format("2006-01-02 15:04:05")
+	var f string
+
+	if this.level <= FILE_LEVEL {
+		_, file, line, ok := runtime.Caller(4)
+		if ok == true {
+			files := strings.Split(file, "/src/")
+			if len(files) >= 2 {
+				f = files[len(files)-1]
+			} else {
+				f = file
+			}
+
+			f = fmt.Sprintf(" >> file: %s	line: %v", f, line)
+		}
+	}
+
+	value := log[0]
+	for _, v := range value.([]interface{}) {
+		data += fmt.Sprintf("%v", v)
+	}
+
+	data = fmt.Sprintf("%v", start+f+"\n	"+data+LOG_END+"\n")
+
+	if this.level == FATAL_N {
+		panic(data)
+	}
+
+	fmt.Print(data)
 }
 
 type Log struct {
