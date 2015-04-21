@@ -1,15 +1,25 @@
 package log
 
 import (
+	"fmt"
+	l "log"
+	"os"
 	"runtime"
 	"sync"
 	"testing"
 )
 
-func TestLog(t *testing.T) {
+func BenchmarkLog(b *testing.B) {
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	FatalOff()
+	file, err := os.Create("test.log")
+	if err != nil {
+		Fatal(err)
+	}
+	defer file.Close()
+
+	SetFile(file)
 
 	Debug("Debugs : ", len("fdsafs"), []string{"Debug", "Debug"}, 10, 20)
 	Info("Info")
@@ -73,6 +83,8 @@ func TestLog(t *testing.T) {
 
 	SetLevel(100)
 
+	Fatal("fdasfasd", "fdasfasdfasd", "fdsfsda", 321, 321)
+
 	var N int = 100000
 
 	waitgroup := sync.WaitGroup{}
@@ -82,17 +94,18 @@ func TestLog(t *testing.T) {
 			defer func() {
 				waitgroup.Done()
 			}()
+			s := `fjkdlsfjklsdafjsdklafjdklsafjsdlalf`
 
-			Debug("Debug", i)
+			Debug(s, i)
 			DebugOff()
 			DebugOn()
-			Info("Info", i)
+			Info(s, i)
 			InfoOff()
 			InfoOn()
-			Warn("Warn", i)
+			Warn(s, i)
 			WarnOff()
 			WarnOn()
-			Error("Error", i)
+			Error(s, i)
 			ErrorOff()
 			ErrorOn()
 
@@ -100,4 +113,25 @@ func TestLog(t *testing.T) {
 	}
 
 	waitgroup.Wait()
+}
+
+func BenchmarkOne(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Debug("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	}
+}
+
+func BenchmarkTwo(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		l.Printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	}
+}
+
+func BenchmarkElog(b *testing.B) {
+	elog := &ELog{}
+	for i := 0; i < b.N; i++ {
+		func(log ...interface{}) {
+			l.Printf(elog.Format(0, log))
+		}("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	}
 }

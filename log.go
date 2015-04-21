@@ -28,7 +28,7 @@ const (
 	WARN_N
 	INFO_N
 	DEBUG_N
-	LOG_LEVEL
+	LOG_LEVEL = DEBUG_N
 )
 
 const (
@@ -72,40 +72,35 @@ type ILog interface {
 	Log(...interface{})
 }
 
-type IDebug interface {
-	Debug(...interface{})
-}
-
-type IInfo interface {
-	Info(...interface{})
-}
-
-type IWarn interface {
-	Warn(...interface{})
-}
-
-type IError interface {
-	Error(...interface{})
-}
-
-type IFatal interface {
-	Fatal(...interface{})
+type IWrite interface {
+	Write(string)
 }
 
 type ELevel struct {
 	level int
 }
 
-type IWrite interface {
-	Write(...interface{})
+type ILevel interface {
+	GetLevel() int
+	SetLevel(int)
 }
 
 type EStatus struct {
 	status int
 }
 
+type IStatus interface {
+	GetStatus() int
+	SetStatus(int)
+}
+
 type EColor struct {
 	color string
+}
+
+type IColor interface {
+	GetColor() int
+	SetColor(int)
 }
 
 type ELog struct {
@@ -117,8 +112,8 @@ type ELog struct {
 	IOn
 	IOff
 
-	statusLock sync.Mutex
-	writeLock  sync.Mutex
+	statusLock sync.RWMutex
+	writeLock  sync.RWMutex
 }
 
 func NewELog(color string, log string, level int) *ELog {
@@ -140,12 +135,8 @@ func NewELog(color string, log string, level int) *ELog {
 	}
 }
 
-func (this *ELog) Log(log ...interface{}) {
-	if this.GetStatus() == OFF {
-		return
-	}
-
-	this.Write(log)
+func (this *ELog) SetLevel(level int) {
+	this.level = level
 }
 
 func (this *ELog) GetLevel() int {
@@ -160,10 +151,14 @@ func (this *ELog) SetStatus(status int) {
 }
 
 func (this *ELog) GetStatus() int {
-	this.statusLock.Lock()
-	defer this.statusLock.Unlock()
+	this.statusLock.RLock()
+	defer this.statusLock.RUnlock()
 
 	return this.status
+}
+
+func (this *ELog) SetColor(color string) {
+	this.color = color
 }
 
 func (this *ELog) GetColor() string {
@@ -178,14 +173,12 @@ func (this *ELog) Off() {
 	this.SetStatus(OFF)
 }
 
-func (this *ELog) Write(log ...interface{}) {
+func (this *ELog) Format(status int, log ...interface{}) string {
 	var data string
-
-	start := LOG_START + this.GetColor() + "m" + this.log + " - " + time.Now().Format("2006-01-02 15:04:05")
 	var f string
 
 	if this.GetLevel() <= FILE_LEVEL {
-		_, file, line, ok := runtime.Caller(4)
+		_, file, line, ok := runtime.Caller(3)
 		if ok == true {
 			files := strings.Split(file, "/src/")
 			if len(files) >= 2 {
@@ -194,29 +187,28 @@ func (this *ELog) Write(log ...interface{}) {
 				f = file
 			}
 
-			f = fmt.Sprintf(" >> file: %s	line: %v", f, line)
+			f = fmt.Sprintf(" >> file: %s   line: %v", f, line)
 		}
 	}
 
 	value := log[0]
 	for _, v := range value.([]interface{}) {
-		data += fmt.Sprintf("%v", v)
+		data += fmt.Sprintf("%v	", v)
 	}
 
-	data = fmt.Sprintf("%v", start+f+"\n	"+data+LOG_END+"\n")
+	data = this.log + " - " + time.Now().Format("2006-01-02 15:04:05") + f + "\n    " + data
+
+	if status == 0 {
+		data = LOG_START + this.GetColor() + "m" + data + LOG_END
+	}
+
+	data += "\n"
 
 	if this.GetLevel() == FATAL_N {
 		panic(data)
 	}
 
-	this.StdoutWrite(data)
-}
-
-func (this *ELog) StdoutWrite(data string) (int, error) {
-	this.writeLock.Lock()
-	defer this.writeLock.Unlock()
-
-	return os.Stdout.WriteString(data)
+	return data
 }
 
 type Log struct {
@@ -229,17 +221,35 @@ type Log struct {
 	Warn_log  *ELog
 	Error_log *ELog
 	Fatal_log *ELog
-	IDebug
-	IInfo
-	IWarn
-	IError
-	IFatal
 
-	statusLock sync.Mutex
+	levelLock      sync.RWMutex
+	statusLock     sync.RWMutex
+	writeLock      sync.RWMutex
+	fileStatusLock sync.RWMutex
+
+	file       *os.File
+	fileStatus int
+}
+
+func (this *Log) GetStatus() int {
+	this.statusLock.RLock()
+	defer this.statusLock.RUnlock()
+
+	return this.status
+}
+
+func (this *Log) SetStatus(status int) {
+	this.statusLock.Lock()
+	defer this.statusLock.Unlock()
+
+	this.status = status
 }
 
 func (this *Log) SetLevel(level int) {
-	if level >= LOG_LEVEL {
+	this.levelLock.Lock()
+	defer this.levelLock.Unlock()
+
+	if level > LOG_LEVEL {
 		this.level = LOG_LEVEL
 		return
 	}
@@ -252,18 +262,42 @@ func (this *Log) SetLevel(level int) {
 	this.level = level
 }
 
-func (this *Log) GetStatus() int {
-	this.statusLock.Lock()
-	defer this.statusLock.Unlock()
+func (this *Log) GetLevel() int {
+	this.levelLock.RLock()
+	defer this.levelLock.RUnlock()
 
-	return this.status
+	return this.level
 }
 
-func (this *Log) SetStatus(status int) {
-	this.statusLock.Lock()
-	defer this.statusLock.Unlock()
+func (this *Log) SetFile(file *os.File) {
+	this.writeLock.Lock()
+	defer this.writeLock.Unlock()
 
-	this.status = status
+	this.file = file
+	if this.file != nil {
+		this.SetFileStatus(1)
+	}
+}
+
+func (this *Log) GetFile() *os.File {
+	this.writeLock.RLock()
+	defer this.writeLock.RUnlock()
+
+	return this.file
+}
+
+func (this *Log) SetFileStatus(status int) {
+	this.fileStatusLock.Lock()
+	defer this.fileStatusLock.Unlock()
+
+	this.fileStatus = status
+}
+
+func (this *Log) GetFileStatus() int {
+	this.fileStatusLock.RLock()
+	defer this.fileStatusLock.RUnlock()
+
+	return this.fileStatus
 }
 
 func (this *Log) On() {
@@ -274,52 +308,65 @@ func (this *Log) Off() {
 	this.SetStatus(OFF)
 }
 
+func (this *Log) Write(data string) (int, error) {
+
+	if this.file == nil {
+		return this.WriteTo(data, os.Stdout)
+	}
+
+	return this.WriteTo(data, this.file)
+}
+
+func (this *Log) WriteTo(data string, file *os.File) (int, error) {
+	this.writeLock.Lock()
+	defer this.writeLock.Unlock()
+
+	return file.WriteString(data)
+}
+
 func (this *Log) Debug(log ...interface{}) {
-	if this.status == OFF || this.level < this.Debug_log.GetLevel() {
+	if this.status == OFF || this.level < this.Debug_log.GetLevel() || this.Debug_log.GetStatus() == OFF {
 		return
 	}
 
-	this.Debug_log.Log(log...)
+	//this.Debug_log.Log(log...)
+	this.Write(this.Debug_log.Format(this.fileStatus, log))
 }
 
 func (this *Log) Info(log ...interface{}) {
-	if this.status == OFF || this.level < this.Info_log.GetLevel() {
+	if this.status == OFF || this.level < this.Info_log.GetLevel() || this.Info_log.GetStatus() == OFF {
 		return
 	}
 
-	this.Info_log.Log(log...)
+	//this.Info_log.Log(log...)
+	this.Write(this.Debug_log.Format(this.fileStatus, log))
 }
 
 func (this *Log) Warn(log ...interface{}) {
-	if this.status == OFF || this.level < this.Warn_log.GetLevel() {
+	if this.status == OFF || this.level < this.Warn_log.GetLevel() || this.Warn_log.GetStatus() == OFF {
 		return
 	}
 
-	this.Warn_log.Log(log...)
+	//this.Warn_log.Log(log...)
+	this.Write(this.Warn_log.Format(this.fileStatus, log))
 }
 
 func (this *Log) Error(log ...interface{}) {
-	if this.status == OFF || this.level < this.Error_log.GetLevel() {
+	if this.status == OFF || this.level < this.Error_log.GetLevel() || this.Warn_log.GetStatus() == OFF {
 		return
 	}
 
-	this.Error_log.Log(log...)
+	//this.Error_log.Log(log...)
+	this.Write(this.Error_log.Format(this.fileStatus, log))
 }
 
 func (this *Log) Fatal(log ...interface{}) {
-	if this.status == OFF || this.level < this.Fatal_log.GetLevel() {
+	if this.status == OFF || this.level < this.Fatal_log.GetLevel() || this.Fatal_log.GetStatus() == OFF {
 		return
 	}
 
-	this.Fatal_log.Log(log...)
-}
-
-var Loger = &Log{
-	Debug_log: NewELog(BLUE, DEBUG, DEBUG_N),
-	Info_log:  NewELog(GREEN, INFO, INFO_N),
-	Warn_log:  NewELog(YELLO, WARN, WARN_N),
-	Error_log: NewELog(PURPLE_RED, ERROR, ERROR_N),
-	Fatal_log: NewELog(RED, FATAL, FATAL_N),
+	//this.Fatal_log.Log(log...)
+	this.Write(this.Fatal_log.Format(this.fileStatus, log))
 }
 
 func Debug(log ...interface{}) {
@@ -394,16 +441,23 @@ func SetLevel(level int) {
 	Loger.SetLevel(level)
 }
 
+func SetFile(file *os.File) {
+	Loger.SetFile(file)
+}
+
+func GetFile() *os.File {
+	return Loger.GetFile()
+}
+
+var Loger = &Log{
+	Debug_log: NewELog(BLUE, DEBUG, DEBUG_N),
+	Info_log:  NewELog(GREEN, INFO, INFO_N),
+	Warn_log:  NewELog(YELLO, WARN, WARN_N),
+	Error_log: NewELog(PURPLE_RED, ERROR, ERROR_N),
+	Fatal_log: NewELog(RED, FATAL, FATAL_N),
+}
+
 func init() {
-	if Loger == nil {
-		Loger = &Log{
-			Debug_log: NewELog(BLUE, DEBUG, DEBUG_N),
-			Info_log:  NewELog(GREEN, INFO, INFO_N),
-			Warn_log:  NewELog(YELLO, WARN, WARN_N),
-			Error_log: NewELog(PURPLE_RED, ERROR, ERROR_N),
-			Fatal_log: NewELog(RED, FATAL, FATAL_N),
-		}
-	}
 
 	Loger.SetLevel(LOG_LEVEL)
 	Loger.On()

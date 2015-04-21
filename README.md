@@ -46,3 +46,8 @@
 ####You can change the level or color of the source.
 
 
+###you can set output file
+####example:
+	log.SetFile(file *os.File)
+
+
