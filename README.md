@@ -42,12 +42,15 @@
         log.Off()
 
 ------------------------------------
+###you can set output file
+
+####example:
+	log.SetFile(file *os.File)
+	
+--------------------------------
 ####a simple project.
 ####You can change the level or color of the source.
 
 
-###you can set output file
-####example:
-	log.SetFile(file *os.File)
 
 
