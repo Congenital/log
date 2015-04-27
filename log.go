@@ -339,7 +339,7 @@ func (this *Log) Info(log ...interface{}) {
 	}
 
 	//this.Info_log.Log(log...)
-	this.Write(this.Debug_log.Format(this.fileStatus, log))
+	this.Write(this.Info_log.Format(this.fileStatus, log))
 }
 
 func (this *Log) Warn(log ...interface{}) {

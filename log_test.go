@@ -1,7 +1,6 @@
 package log
 
 import (
-	"fmt"
 	l "log"
 	"os"
 	"runtime"
@@ -19,7 +18,7 @@ func BenchmarkLog(b *testing.B) {
 	}
 	defer file.Close()
 
-	SetFile(file)
+	//SetFile(file)
 
 	Debug("Debugs : ", len("fdsafs"), []string{"Debug", "Debug"}, 10, 20)
 	Info("Info")
