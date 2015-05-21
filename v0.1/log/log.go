@@ -32,7 +32,7 @@ const (
 )
 
 const (
-	FILE_LEVEL = WARN_N
+	FILE_LEVEL = DEBUG_N
 )
 
 const (
@@ -174,6 +174,7 @@ func (this *ELog) Off() {
 }
 
 func (this *ELog) Format(status int, log ...interface{}) string {
+	t1 := time.Now().UnixNano()
 	var data string
 	var f string
 
@@ -208,6 +209,8 @@ func (this *ELog) Format(status int, log ...interface{}) string {
 		panic(data)
 	}
 
+	t2 := time.Now().UnixNano()
+	fmt.Println(t2 - t1)
 	return data
 }
 
